@@ -15,6 +15,7 @@
 #include<vector>
 #include <complex> 
 #include <bitset> 
+#include <vector> 
 
 
 
@@ -90,8 +91,8 @@ int main()
 	FrmLen=FrmLen*FS;                          // Obtain frame length in samples
 	FrmSpace=FrmSpace*FS;                      // Obtain frame space in samples
 	
-	short buffer[FrmLen];    // buffer stores a frame of data, each 2 byte
-	float data[FrmLen];
+	vector<short> buffer(FrmLen);    // buffer stores a frame of data, each 2 byte
+	vector<float> data(FrmLen);
 	float energy=0.0;
 	float mel_energy[FiltNum]; // This stores the channel output energy for a frame
 
@@ -108,12 +109,12 @@ int main()
 	  } 
 	
     // While loop reads in each frame, and compute cepstrum features
-	while(fread(buffer,sizeof(short),FrmLen,sourcefile)==FrmLen)  //  continue to read in a frame of data
+	while(fread(buffer.data(),sizeof(short),FrmLen,sourcefile)==FrmLen)  //  continue to read in a frame of data
 	{
 
-		HammingWindow(buffer,data);  // multiply Hamming window to speech, return to data 
-		energy=FrmEnergy(buffer);//Get frame energy without windowing
-		zero_fft(data,zero_padded); // This step first zero pad data, and do FFT
+		HammingWindow(buffer.data(),data.data());  // multiply Hamming window to speech, return to data 
+		energy=FrmEnergy(buffer.data());//Get frame energy without windowing
+		zero_fft(data.data(),zero_padded); // This step first zero pad data, and do FFT
 		mag_square(zero_padded, fft_mag);    // This step does magnitude square for the first half of FFT
         Mel_EN(FiltWeight,FiltNum, fft_mag, mel_energy); // This step computes output log energy of each channel
 		Cepstrum(mel_energy);
@@ -274,17 +275,17 @@ void InitFilt(float (*w)[FFTLen/2+1], int num_filt)
 void CreateFilt(float (*w)[FFTLen/2+1], int num_filt, int Fs, int high, int low)
 {
    float df=(float) Fs/(float) FFTLen;    // FFT interval
-   int indexlow=round((float) FFTLen*(float) low/(float) Fs); // FFT index of low freq limit
+   int indexlow=(int)(round((float) FFTLen*(float) low/(float) Fs)); // FFT index of low freq limit
    int indexhigh=round((float) FFTLen*(float) high/(float) Fs); // FFT index of high freq limit
 
    float melmax=2595.0*log10(1.0+(float) high/700.0); // mel high frequency
    float melmin=2595.0*log10(1.0+(float) low/700.0);  // mel low frequency
    float melinc=(melmax-melmin)/(float) (num_filt+1); //mel half bandwidth
-   float melcenters[num_filt];        // mel center frequencies
-   float fcenters[num_filt];          // Hertz center frequencies
-   int indexcenter[num_filt];         // FFT index for Hertz centers
-   int indexstart[num_filt];   //FFT index for the first sample of each filter
-   int indexstop[num_filt];    //FFT index for the last sample of each filter
+   vector<float> melcenters(num_filt);        // mel center frequencies
+   vector<float> fcenters(num_filt);          // Hertz center frequencies
+   vector<int> indexcenter(num_filt);         // FFT index for Hertz centers
+   vector<int> indexstart(num_filt);   //FFT index for the first sample of each filter
+   vector<int> indexstop(num_filt);    //FFT index for the last sample of each filter
    float increment,decrement; // increment and decrement of the left and right ramp
    float sum=0.0;
    int i,j;
@@ -303,12 +304,12 @@ void CreateFilt(float (*w)[FFTLen/2+1], int num_filt, int Fs, int high, int low)
    indexstop[num_filt-1]=indexhigh;
    for (i=1;i<=num_filt;i++)
    {
-      increment=1.0/((float) indexcenter[i-1]-(float) indexstart[i-1]); // left ramp
+      increment=1.0f/((float) indexcenter[i-1]-(float) indexstart[i-1]); // left ramp
 	  for (j=indexstart[i-1];j<=indexcenter[i-1];j++)
 	     w[i-1][j]=((float)j-(float)indexstart[i-1])*increment;
-	  decrement=1.0/((float) indexstop[i-1]-(float) indexcenter[i-1]);    // right ramp
+	  decrement=1.0f/((float) indexstop[i-1]-(float) indexcenter[i-1]);    // right ramp
 	  for (j=indexcenter[i-1];j<=indexstop[i-1];j++)
-	     w[i-1][j]=1.0-((float)j-(float)indexcenter[i-1])*decrement;		 
+	     w[i-1][j]=1.0f-((float)j-(float)indexcenter[i-1])*decrement;		 
    }
 
    for (i=1;i<=num_filt;i++)     // Normalize filter weights by sum
